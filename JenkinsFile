@@ -10,7 +10,7 @@ pipeline {
     string(name: 'CFN_TEMPLATE', defaultValue: 'booklist-lambda-restapi.yaml', description: 'CFN template path')
     booleanParam(name: 'SKIP_DEPLOY',  defaultValue: false)
     booleanParam(name: 'SKIP_API',     defaultValue: false)
-    booleanParam(name: 'SKIP_DESTROY', defaultValue: true)
+    booleanParam(name: 'SKIP_DESTROY', defaultValue: false)
  
   }
 
@@ -61,17 +61,23 @@ pipeline {
       accessKeyVariable: 'AWS_ACCESS_KEY_ID',
       secretKeyVariable: 'AWS_SECRET_ACCESS_KEY']]) {
     bat '''
-      for /f "usebackq delims=" %%A in (`
-        aws cloudformation describe-stacks --stack-name "%CFN_STACK_NAME%" --region "%AWS_DEFAULT_REGION%" ^
-          --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue | [0]" --output text
-      `) do set API_URL=%%A
+    @echo off
+      setlocal enabledelayedexpansion
+      for /f "usebackq delims=" %%A in (
+            `aws cloudformation describe-stacks --stack-name "BookListStack" --region us-east-1 --query "Stacks[0].Outputs[?OutputKey=='InvokeUrl'].OutputValue" --output text
+        `) do (
+        set API_URL=%%A
+        )
+
+    endlocal & set "API_URL=%API_URL%"
 
       if /I "%API_URL%"=="None" set API_URL=
 
       rem If no URL, skip without error
       if "%API_URL%"=="" goto :eof
+      @echo on
       echo API url : %API_URL%
-      curl "%API_URL%/ping"
+      curl -X GET "%API_URL%" -H "x-api-key: SID-STU123456-0000000000000000"
     '''
       }
   }
@@ -90,11 +96,10 @@ pipeline {
       accessKeyVariable: 'AWS_ACCESS_KEY_ID',
       secretKeyVariable: 'AWS_SECRET_ACCESS_KEY']]) {
         bat """
-         rem aws cloudformation delete-stack --stack-name "%CFN_STACK_NAME%"
+          aws cloudformation delete-stack --stack-name "%CFN_STACK_NAME%"
         """
       }
       }
     }
   }
 }
-
