@@ -62,7 +62,7 @@ pipeline {
       secretKeyVariable: 'AWS_SECRET_ACCESS_KEY']]) {
     bat '''
     @echo off
-      setlocal enabledelayedexpansion
+      rem setlocal enabledelayedexpansion
       for /f "usebackq delims=" %%A in (
             `aws cloudformation describe-stacks --stack-name "BookListStack" --region us-east-1 --query "Stacks[0].Outputs[?OutputKey=='InvokeUrl'].OutputValue" --output text
         `) do (
